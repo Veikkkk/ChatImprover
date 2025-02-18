@@ -1,0 +1,25 @@
+Configs: {
+	ChatImproverConfig: {
+		DisplayName: 配置选项
+
+		isMouseScrollingEnabled: {
+			Label: 允许鼠标滑动聊天记录
+			Tooltip: 如标题
+		}
+
+		isCaretMovable: {
+			Label: 允许光标左右移动
+			Tooltip: 输入时允许移动光标并在光标处输入
+		}
+
+		isPageNavigationEnabled: {
+			Label: 上下键翻页
+			Tooltip: 上下键翻动整页,也就是10行
+		}
+
+		isImeDeleteFixEnabled: {
+			Label: 修复输入法删除的bug
+			Tooltip: 修复输入法候选框和已输入文字同时删除问题
+		}
+	}
+}

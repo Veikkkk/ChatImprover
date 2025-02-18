@@ -1,0 +1,33 @@
+[h1]介绍[/h1]
+这是一个你订阅后可能难以察觉的模组，因为你会觉得这一切本就应该这样。
+
+模组有4项功能，下面可能需要花费一点时间去了解：
+
+[h3]1. 修复输入法删除时的bug[/h3]
+修复前：按下删除键同时删除拼音和已输入文字。
+
+[img]https://www.helloimg.com/i/2025/02/18/67b41003e296c.gif[/img]
+
+修复后：
+
+[img]https://www.helloimg.com/i/2025/02/18/67b41003a506d.gif[/img]
+
+[h3]2. 输入光标可左右移动[/h3]
+
+[img]https://www.helloimg.com/i/2025/02/18/67b41003c21ce.gif[/img]
+
+[h3]3. 鼠标滚轮翻动聊天记录[/h3]
+原版：只能用上下键翻动。
+
+[img]https://www.helloimg.com/i/2025/02/18/67b4100519a11.gif[/img]
+
+[h3]4. 上下键翻页[/h3]
+需要翻动很久前的聊天记录时很有用。
+
+[img]https://www.helloimg.com/i/2025/02/18/67b41003f0bdd.gif[/img]
+
+[h1]更新日志[/h1]
+[h3]v1.0 (2025/2/18)[/h3]
+1. 初次发布。
+
+[img]https://www.helloimg.com/i/2025/02/16/67b15389c0770.gif[/img]

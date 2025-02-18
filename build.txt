@@ -1,0 +1,4 @@
+displayName =  BetterChatBox 更好的聊天栏
+author = Veik
+version = 1.0
+side = Client

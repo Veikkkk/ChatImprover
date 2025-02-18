@@ -1,0 +1,25 @@
+Configs: {
+	ChatImproverConfig: {
+		DisplayName: Configuration Options
+
+		isMouseScrollingEnabled: {
+			Label: Allow Mouse Scrolling in Chat
+			Tooltip: As described in the title
+		}
+
+		isCaretMovable: {
+			Label: Allow Horizontal Caret Movement
+			Tooltip: Allow caret to move left or right while typing, and input text at caret position
+		}
+
+		isPageNavigationEnabled: {
+			Label: Page Navigation with Arrow Keys
+			Tooltip: Use the arrow keys to navigate pages, i.e., scroll 10 lines
+		}
+
+		isImeDeleteFixEnabled: {
+			Label: Fix IME Delete Bug
+			Tooltip: Fix the issue where the input method editor (IME) candidate box and the typed text are deleted simultaneously
+		}
+	}
+}
