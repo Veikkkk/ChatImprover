@@ -222,11 +222,11 @@ namespace ChatImprover
             Main.oldInputText = Main.inputText;
             Main.inputText = Keyboard.GetState();
 
-            HandleBackspace(ref text);
+            HandleBackspace(ref text, isCtrlPressed);
             return text;
         }
 
-        private void HandleBackspace(ref string text)
+        private void HandleBackspace(ref string text, bool isCtrlPressed)
         {
             var pressedKeys = Main.inputText.GetPressedKeys();
             var oldPressedKeys = Main.oldInputText.GetPressedKeys();
@@ -274,8 +274,27 @@ namespace ChatImprover
                     TextSnippet[] array = ChatManager.ParseMessage(text, Microsoft.Xna.Framework.Color.White).ToArray();
                     if (!array[array.Length - 1].DeleteWhole)
                     {
-                        text = text.Remove(caretPosition - 1, 1);
-                        caretPosition = Math.Max(0, --caretPosition);
+                        if (isCtrlPressed)
+                        {
+                            string textBeforeCaret = text.Substring(0, caretPosition - 1);
+                            textBeforeCaret = textBeforeCaret.TrimEnd();
+                            int spaceIndex = textBeforeCaret.LastIndexOf(' ', textBeforeCaret.Length - 1);
+                            if (spaceIndex >= 0)
+                            {
+                                text = text.Remove(spaceIndex + 1, caretPosition - spaceIndex - 1);
+                                caretPosition = spaceIndex + 1;
+                            }
+                            else
+                            {
+                                text = text.Remove(0, caretPosition);
+                                caretPosition = 0;
+                            }
+                        }
+                        else
+                        {
+                            text = text.Remove(caretPosition - 1, 1);
+                            caretPosition = Math.Max(0, --caretPosition);
+                        }
                     }
                     else
                     {
@@ -409,28 +428,11 @@ namespace ChatImprover
                 {
                     Main.spriteBatch.Draw(TextureAssets.TextBack.Value, new Vector2(78f, Main.screenHeight - 36), new Microsoft.Xna.Framework.Rectangle(0, 0, TextureAssets.TextBack.Width(), TextureAssets.TextBack.Height()), new Microsoft.Xna.Framework.Color(100, 100, 100, 100), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
                 }
+
+
+
+
                 int hoveredSnippet = -1;
-
-                /*                StringBuilder sb = new StringBuilder(Main.chatText);
-
-                                //光标闪烁处理
-                                string insertText = Main.instance.textBlinkerState == 1 ? "|" : " ";
-                                if (string.IsNullOrEmpty(text))
-                                {
-                                    text = insertText;
-                                }
-                                else if (caretPosition >= 0 && caretPosition <= text.Length)
-                                {
-                                    lock (caretPositionLock)
-                                    {
-                                        text = text.Insert(caretPosition, insertText);
-                                    }
-                                }
-
-                                //IME字符串处理
-                                string compositionString = Platform.Get<IImeService>().CompositionString;
-                                if (compositionString != null && compositionString.Length > 0)
-                                    text = text.Insert(caretPosition, $"[c/FFF014:{compositionString}]");*/
                 StringBuilder sb = new StringBuilder(Main.chatText);
 
                 // 光标闪烁处理
@@ -454,6 +456,21 @@ namespace ChatImprover
                 List<TextSnippet> list = ChatManager.ParseMessage(sb.ToString(), Microsoft.Xna.Framework.Color.White);
 
                 array = list.ToArray();
+
+                /*                // 创建 1x1 透明纯色纹理
+                                Texture2D solidTexture = new Texture2D(Main.graphics.GraphicsDevice, 1, 1);
+                                solidTexture.SetData(new Color[] { Color.White }); // 设定基础颜色
+
+
+                                Vector2 stringSize = ChatManager.GetStringSize(FontAssets.MouseText.Value, array, Vector2.Zero);
+
+                                // 使用半透明红色绘制一个 200x50 的矩形
+
+
+                                int startX = (int)88f;
+                                int startY = (int)(Main.screenHeight - 30);
+                                Main.spriteBatch.Draw(solidTexture, new Rectangle(startX, startY, startX + (int)stringSize.X, 30), new Color(106, 90, 205, 150));*/
+
                 ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, array, new Vector2(88f, Main.screenHeight - 30), 0f, Vector2.Zero, Vector2.One, out hoveredSnippet);
                 if (hoveredSnippet > -1)
                 {
