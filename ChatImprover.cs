@@ -54,7 +54,6 @@ namespace ChatImprover
         }
         public override void Load()
         {
-            // 在加载时注册快捷键
             Terraria.On_Main.DrawPlayerChat += DrawPlayerChat;
             Terraria.On_Main.GetInputText += GetInputText;
             Terraria.On_Main.DoUpdate_HandleChat += DoUpdate_HandleChat;
@@ -167,7 +166,11 @@ namespace ChatImprover
 
         private string GetInputText(On_Main.orig_GetInputText orig, string oldString, bool allowMultiLine = false)
         {
-            //服务器模式和游戏窗口焦点
+            if (!Main.drawingPlayerChat)
+            {
+                return orig(oldString, allowMultiLine);
+            }
+
             if (Main.dedServ || !Main.hasFocus) return Main.dedServ ? "" : oldString;
 
             Main.inputTextEnter = false;

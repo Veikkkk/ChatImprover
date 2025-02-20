@@ -27,6 +27,9 @@
 [img]https://www.helloimg.com/i/2025/02/18/67b41003f0bdd.gif[/img]
 
 [h1]更新日志[/h1]
+[h3]v1.1 (2025/2/18)[/h3]
+1. 修复安装后RecipeBrowser无法输入
+
 [h3]v1.0 (2025/2/18)[/h3]
 1. 初次发布。
 
