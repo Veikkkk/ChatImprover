@@ -17,6 +17,7 @@ public class ChatImproverConfig : ModConfig
     }
     public override ConfigScope Mode => ConfigScope.ClientSide;
 
+    [Header("CommonConfig")]
     [DefaultValue(true)]
     public bool isMouseScrollingEnabled { get; set; }
 
@@ -28,6 +29,39 @@ public class ChatImproverConfig : ModConfig
 
     [DefaultValue(true)]
     public bool isImeDeleteFixEnabled { get; set; }
+
+
+    [Header("NameFormat")]
+    [DefaultValue("")]
+    public string LeftSymbol { get; set; }
+
+    [DefaultValue(":")]
+    public string RightSymbol { get; set; }
+
+    [DefaultValue("#a364ff")]
+    public string nameColor { get; set; }
+    public static string GetnameColor()
+    {
+        string color16 = instance.nameColor.Replace("#", "");
+        if (color16.Length == 6 && color16.All(c => "0123456789abcdef".Contains(char.ToLower(c))))
+        {
+            return instance.nameColor;
+        }else{
+            instance.nameColor = "#a364ff";
+            return instance.nameColor;
+        }
+        
+    }
+
+    public static string GetLeftSymbol()
+    {
+        return instance.LeftSymbol;
+    }
+
+    public static string GetRightSymbol()
+    {
+        return instance.RightSymbol;
+    }
 
 
     public static bool GetIsMouseScrollingEnabled()

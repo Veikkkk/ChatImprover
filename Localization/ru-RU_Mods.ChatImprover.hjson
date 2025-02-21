@@ -21,5 +21,25 @@ Configs: {
 			Label: Исправить ошибку удаления с использованием IME
 			Tooltip: Исправить проблему, когда кандидат IME и введенный текст удаляются одновременно
 		}
+
+		RightSymbol: {
+			Tooltip: ""
+			Label: Правая Символ
+		}
+
+		LeftSymbol: {
+			Tooltip: ""
+			Label: Левая Символ
+		}
+
+		Headers: {
+			NameFormat: Формат имени игрока
+			CommonConfig: Общие настройки
+		}
+
+		nameColor: {
+			Label: Цвет имени
+			Tooltip: ""
+		}
 	}
 }

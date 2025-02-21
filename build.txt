@@ -1,4 +1,4 @@
 displayName =  BetterChatBox 更好的聊天栏
 author = Veik
-version = 1.3
+version = 1.4
 side = Client

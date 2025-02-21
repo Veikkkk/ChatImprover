@@ -25,6 +25,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Net.Mime.MediaTypeNames;
 using System.Text;
 using Iced.Intel;
+using Terraria.WorldBuilding;
 
 namespace ChatImprover
 {
@@ -58,7 +59,19 @@ namespace ChatImprover
             Terraria.On_Main.DrawPlayerChat += DrawPlayerChat;
             Terraria.On_Main.GetInputText += GetInputText;
             Terraria.On_Main.DoUpdate_HandleChat += DoUpdate_HandleChat;
+            Terraria.GameContent.UI.Chat.On_NameTagHandler.Terraria_UI_Chat_ITagHandler_Parse += NameTagParse; ;
 
+        }
+
+        private TextSnippet NameTagParse(On_NameTagHandler.orig_Terraria_UI_Chat_ITagHandler_Parse orig, NameTagHandler self, string text, Color baseColor, string options)
+        {
+            string processedText = text.Replace("\\[", "[").Replace("\\]", "]");
+            string finalText = ChatImproverConfig.GetLeftSymbol() + processedText + ChatImproverConfig.GetRightSymbol();
+            return new TextSnippet(finalText, new Color(
+                Convert.ToByte(Convert.ToInt32(ChatImproverConfig.GetnameColor().Substring(1, 2), 16)),
+                Convert.ToByte(Convert.ToInt32(ChatImproverConfig.GetnameColor().Substring(3, 2), 16)),
+                Convert.ToByte(Convert.ToInt32(ChatImproverConfig.GetnameColor().Substring(5, 2), 16))
+            ));
         }
 
         private void DoUpdate_HandleChat(On_Main.orig_DoUpdate_HandleChat orig)
@@ -481,7 +494,6 @@ namespace ChatImprover
                 }
 
                 List<TextSnippet> list = ChatManager.ParseMessage(sb.ToString(), Microsoft.Xna.Framework.Color.White);
-
                 array = list.ToArray();
 
                 /*                // 创建 1x1 透明纯色纹理

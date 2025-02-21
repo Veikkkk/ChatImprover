@@ -21,5 +21,25 @@ Configs: {
 			Label: Fix IME Delete Bug
 			Tooltip: Fix the issue where the input method editor (IME) candidate box and the typed text are deleted simultaneously
 		}
+
+		RightSymbol: {
+			Tooltip: ""
+			Label: Right Symbol
+		}
+
+		LeftSymbol: {
+			Tooltip: ""
+			Label: Left Symbol
+		}
+
+		Headers: {
+			NameFormat: Player Name Format
+			CommonConfig: Common Configurations
+		}
+
+		nameColor: {
+			Label: Name Color
+			Tooltip: ""
+		}
 	}
 }

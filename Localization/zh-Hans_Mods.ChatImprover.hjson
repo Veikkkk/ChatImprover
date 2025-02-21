@@ -21,5 +21,25 @@ Configs: {
 			Label: 修复输入法删除的bug
 			Tooltip: 修复输入法候选框和已输入文字同时删除问题
 		}
+
+		RightSymbol: {
+			Tooltip: ""
+			Label: 右符号
+		}
+
+		LeftSymbol: {
+			Tooltip: ""
+			Label: 左符号
+		}
+
+		Headers: {
+			NameFormat: 玩家名格式
+			CommonConfig: 常用配置
+		}
+
+		nameColor: {
+			Label: 名字颜色
+			Tooltip: ""
+		}
 	}
 }
