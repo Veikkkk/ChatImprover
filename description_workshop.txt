@@ -32,6 +32,9 @@
 [img]https://www.helloimg.com/i/2025/02/21/67b7593cdf611.gif[/img]
 
 [h1]更新日志[/h1]
+[h3]v1.3 (2025/2/21)[/h3]
+1. 修复指令发送
+
 [h3]v1.2 (2025/2/21)[/h3]
 1. 加入Ctrl + Backspace组合键
 

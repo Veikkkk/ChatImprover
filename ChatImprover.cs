@@ -24,6 +24,7 @@ using Terraria.Net;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Net.Mime.MediaTypeNames;
 using System.Text;
+using Iced.Intel;
 
 namespace ChatImprover
 {
@@ -62,7 +63,6 @@ namespace ChatImprover
 
         private void DoUpdate_HandleChat(On_Main.orig_DoUpdate_HandleChat orig)
         {
-
             if (Main.CurrentInputTextTakerOverride != null)
             {
                 Main.drawingPlayerChat = false;
@@ -138,15 +138,8 @@ namespace ChatImprover
             if (!Main.inputTextEnter || !Main.chatRelease)
                 return;
 
-            //指令类访问不了,让他自己处理吧
-            bool handled = Main.chatText.Length > 0 && Main.chatText[0] == '/';
-            if (handled)
-            {
-                orig();
-                return;
-            }
-
-            if (Main.chatText != "")
+            bool handled = Main.chatText.Length > 0 && Main.chatText[0] == '/' && HandleCommand(Main.chatText);
+            if (Main.chatText != "" && !handled)
             {
                 ChatMessage message = ChatManager.Commands.CreateOutgoingMessage(Main.chatText);
                 if (Main.netMode == NetmodeID.MultiplayerClient)
@@ -162,6 +155,40 @@ namespace ChatImprover
             Main.chatRelease = false;
             SoundEngine.PlaySound(SoundID.MenuClose);
 
+        }
+
+        private bool HandleCommand(string chatText)
+        {
+            MethodInfo method = typeof(CommandLoader).GetMethod("HandleCommand", BindingFlags.NonPublic | BindingFlags.Static);
+
+            if (method != null)
+            {
+                object[] parameters = new object[]
+                {
+                chatText,
+                new ChatCommandCaller()
+                };
+                var result = (bool)method.Invoke(null, parameters);
+                return result;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        internal class ChatCommandCaller : CommandCaller
+        {
+            public CommandType CommandType => CommandType.Chat;
+            public Player Player => Main.player[Main.myPlayer];
+
+            public void Reply(string text, Color color = default(Color))
+            {
+                if (color == default(Color))
+                    color = Color.White;
+                foreach (var line in text.Split('\n'))
+                    Main.NewText(line, color.R, color.G, color.B);
+            }
         }
 
         private string GetInputText(On_Main.orig_GetInputText orig, string oldString, bool allowMultiLine = false)
