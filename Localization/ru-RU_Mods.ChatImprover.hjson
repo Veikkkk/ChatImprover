@@ -35,10 +35,16 @@ Configs: {
 		Headers: {
 			NameFormat: Формат имени игрока
 			CommonConfig: Общие настройки
+			BetaConfig: Экспериментальная функция
 		}
 
 		nameColor: {
 			Label: Цвет имени
+			Tooltip: ""
+		}
+
+		showCount: {
+			Label: Показать количество строк истории чата
 			Tooltip: ""
 		}
 	}

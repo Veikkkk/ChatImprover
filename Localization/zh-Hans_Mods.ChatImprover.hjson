@@ -35,10 +35,16 @@ Configs: {
 		Headers: {
 			NameFormat: 玩家名格式
 			CommonConfig: 常用配置
+			BetaConfig: 实验性功能
 		}
 
 		nameColor: {
 			Label: 名字颜色
+			Tooltip: ""
+		}
+
+		showCount: {
+			Label: 展示聊天记录行数
 			Tooltip: ""
 		}
 	}

@@ -35,10 +35,16 @@ Configs: {
 		Headers: {
 			NameFormat: Player Name Format
 			CommonConfig: Common Configurations
+			BetaConfig: Experimental Feature
 		}
 
 		nameColor: {
 			Label: Name Color
+			Tooltip: ""
+		}
+
+		showCount: {
+			Label: Show Chat History Line Count
 			Tooltip: ""
 		}
 	}

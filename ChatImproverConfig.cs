@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -40,17 +40,30 @@ public class ChatImproverConfig : ModConfig
 
     [DefaultValue("#a364ff")]
     public string nameColor { get; set; }
+
+    [Header("BetaConfig")]
+    [Range(10, 30)]
+    [DefaultValue(15)]
+    [Slider]
+    public int showCount { get; set; }
+
+    public static int GetshowCount()
+    {
+        return instance.showCount;
+    }
     public static string GetnameColor()
     {
         string color16 = instance.nameColor.Replace("#", "");
         if (color16.Length == 6 && color16.All(c => "0123456789abcdef".Contains(char.ToLower(c))))
         {
             return instance.nameColor;
-        }else{
+        }
+        else
+        {
             instance.nameColor = "#a364ff";
             return instance.nameColor;
         }
-        
+
     }
 
     public static string GetLeftSymbol()

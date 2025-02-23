@@ -26,43 +26,155 @@ using static System.Net.Mime.MediaTypeNames;
 using System.Text;
 using Iced.Intel;
 using Terraria.WorldBuilding;
+using System.Xml.Linq;
+using ReLogic.Graphics;
+
 
 namespace ChatImprover
 {
     public class ChatImprover : Mod
     {
-        public static ModKeybind CustomKey { get; private set; }
+        //åå°„å­—æ®µå¤ç”¨
         private static MethodInfo handleCommandMethod;
+        FieldInfo field_startChatLine;
+        FieldInfo field_messages;
 
+        //é€€æ ¼é€Ÿç‡
         private static int backSpaceCount;
         private static float backSpaceRate;
 
-        private float leftArrowRate = 0.5f;  // ×ó¼ıÍ·ÒÆ¶¯µÄËÙÂÊ
-        private float rightArrowRate = 0.5f; // ÓÒ¼ıÍ·ÒÆ¶¯µÄËÙÂÊ
-        private int leftArrowCount = 5;  // ¿ØÖÆ×ó¼ıÍ·°´ÏÂµÄ¼ÆÊı
-        private int rightArrowCount = 5; // ¿ØÖÆÓÒ¼ıÍ·°´ÏÂµÄ¼ÆÊı
+        //é¼ æ ‡æ»šåŠ¨é€Ÿç‡
+        private float leftArrowRate = 0.5f;
+        private float rightArrowRate = 0.5f;
+        private int leftArrowCount = 5;
+        private int rightArrowCount = 5;
 
         private bool upKeyPressed = false;
         private bool downKeyPressed = false;
 
+        //ä¿®å¤è¾“å…¥æ³•åˆ é™¤bug
         private int lastCompositionStringLength = 0;
 
-        private static int caretPosition = 0;  // ¹â±êÎ»ÖÃ£¬³õÊ¼Îª 0
+        //å…‰æ ‡ä½ç½®
+        private static int caretPosition = 0;
 
+        //èŠå¤©è®°å½•è¡Œæ•°
+        private static int lineCount = 1;
+
+        public override void Load()
+        {
+            //Hookä½ç½®
+            Terraria.On_Main.DrawPlayerChat += DrawPlayerChat;
+            Terraria.On_Main.GetInputText += GetInputText;
+            Terraria.On_Main.DoUpdate_HandleChat += DoUpdate_HandleChat;
+            Terraria.GameContent.UI.Chat.On_NameTagHandler.Terraria_UI_Chat_ITagHandler_Parse += NameTagParse; ;
+            Terraria.GameContent.UI.Chat.On_RemadeChatMonitor.DrawChat += DrawChat;
+
+            //åå°„é¢„å¤„ç†
+            field_startChatLine = typeof(RemadeChatMonitor).GetField("_startChatLine", BindingFlags.NonPublic | BindingFlags.Instance);
+            field_messages = typeof(RemadeChatMonitor).GetField("_messages", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        }
+
+        //è¯»å–å‰ªè´´æ¿
         private static string PasteTextIn(bool allowMultiLine, string newKeys)
         {
             newKeys = ((!allowMultiLine) ? (newKeys + Platform.Get<IClipboard>().Value) : (newKeys + Platform.Get<IClipboard>().MultiLineValue));
             return newKeys;
         }
-        public override void Load()
-        {
-            Terraria.On_Main.DrawPlayerChat += DrawPlayerChat;
-            Terraria.On_Main.GetInputText += GetInputText;
-            Terraria.On_Main.DoUpdate_HandleChat += DoUpdate_HandleChat;
-            Terraria.GameContent.UI.Chat.On_NameTagHandler.Terraria_UI_Chat_ITagHandler_Parse += NameTagParse; ;
 
+        //ç»˜åˆ¶èŠå¤©è®°å½•
+        private void DrawChat(On_RemadeChatMonitor.orig_DrawChat orig, RemadeChatMonitor self, bool drawingPlayerChat)
+        {
+            /*            FieldInfo fieldInfo = typeof(RemadeChatMonitor).GetField("_showCount", BindingFlags.NonPublic | BindingFlags.Instance);
+                        int _showCount = (int)fieldInfo.GetValue(Main.chatMonitor);*/
+            int _showCount = ChatImproverConfig.GetshowCount();
+
+            int _startChatLine = (int)field_startChatLine.GetValue(Main.chatMonitor);
+
+            List<ChatMessageContainer> _messages = (List<ChatMessageContainer>)field_messages.GetValue(Main.chatMonitor);
+
+            int remainingChatLines = _startChatLine;
+            int messageIndex = 0;
+            int lineOffsetInMessage = 0;
+
+            // è®¡ç®—èµ·å§‹æ¶ˆæ¯å’Œè¡Œæ•°
+            while (remainingChatLines > 0 && messageIndex < _messages.Count)
+            {
+                int availableLines = Math.Min(remainingChatLines, _messages[messageIndex].LineCount);
+                remainingChatLines -= availableLines;
+                lineOffsetInMessage += availableLines;
+
+                if (lineOffsetInMessage == _messages[messageIndex].LineCount)
+                {
+                    lineOffsetInMessage = 0;
+                    messageIndex++;
+                }
+            }
+
+            int displayedMessages = 0;
+            int? hoveredMessageIndex = null;
+            int snippetIndex = -1;
+            int? hoveredSnippetIndex = null;
+            int hoveredSnippet = -1;
+
+            // é¢„å…ˆè®¡ç®—å¥½å±å¹•é«˜åº¦
+            float screenHeight = Main.screenHeight;
+            float baseY = screenHeight - 28 * lineCount - 28;
+
+            // éå†å¹¶ç»˜åˆ¶èŠå¤©æ¶ˆæ¯
+            float NameLength = 0;
+            while (displayedMessages < _showCount && messageIndex < _messages.Count)
+            {
+                ChatMessageContainer chatMessageContainer = _messages[messageIndex];
+                if (!chatMessageContainer.Prepared || !(drawingPlayerChat || chatMessageContainer.CanBeShownWhenChatIsClosed))
+                    break;
+
+                if (NameLength == 0)
+                {
+                    TextSnippet[] firstSnippet = chatMessageContainer.GetSnippetWithInversedIndex(chatMessageContainer.LineCount - 1);
+                    if (firstSnippet.Length > 1 && firstSnippet[0].TextOriginal.StartsWith("[n:") && firstSnippet[0].TextOriginal.EndsWith("]"))
+                    {
+                        TextSnippet space = new TextSnippet(" ");
+                        DynamicSpriteFont font = FontAssets.MouseText.Value;
+                        NameLength = firstSnippet[0].GetStringLength(font) + space.GetStringLength(font);
+                    }
+                }
+
+
+                TextSnippet[] snippetWithInversedIndex = chatMessageContainer.GetSnippetWithInversedIndex(lineOffsetInMessage);
+                float horOffset = (lineOffsetInMessage != chatMessageContainer.LineCount - 1) ? NameLength : 0f;
+                Vector2 drawPosition = new Vector2(88f + horOffset, baseY - displayedMessages * 21);
+                ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, snippetWithInversedIndex, drawPosition, 0f, Vector2.Zero, Vector2.One, out hoveredSnippet);
+
+                if (hoveredSnippet >= 0)
+                {
+                    hoveredSnippetIndex = hoveredSnippet;
+                    hoveredMessageIndex = messageIndex;
+                    snippetIndex = lineOffsetInMessage;
+                }
+
+                displayedMessages++;
+                lineOffsetInMessage++;
+
+                if (lineOffsetInMessage >= chatMessageContainer.LineCount)
+                {
+                    lineOffsetInMessage = 0;
+                    NameLength = 0;
+                    messageIndex++;
+                }
+            }
+
+            if (hoveredMessageIndex.HasValue && hoveredSnippetIndex.HasValue)
+            {
+                TextSnippet[] snippetWithInversedIndex2 = _messages[hoveredMessageIndex.Value].GetSnippetWithInversedIndex(snippetIndex);
+                snippetWithInversedIndex2[hoveredSnippetIndex.Value].OnHover();
+                if (Main.mouseLeft && Main.mouseLeftRelease)
+                    snippetWithInversedIndex2[hoveredSnippetIndex.Value].OnClick();
+            }
         }
 
+        //ç©å®¶åæ ¼å¼å’Œé¢œè‰²
         private TextSnippet NameTagParse(On_NameTagHandler.orig_Terraria_UI_Chat_ITagHandler_Parse orig, NameTagHandler self, string text, Color baseColor, string options)
         {
             string processedText = text.Replace("\\[", "[").Replace("\\]", "]");
@@ -94,6 +206,7 @@ namespace ChatImprover
                 return;
             }
 
+            //é¼ æ ‡æ»šåŠ¨
             int linesOffset = 0;
             if (ChatImproverConfig.GetIsMouseScrollingEnabled())
             {
@@ -106,6 +219,7 @@ namespace ChatImprover
                     Main.chatMonitor.Offset(linesOffset);
             }
 
+            //ä¸Šä¸‹é”®ç¿»é¡µ
             if (ChatImproverConfig.GetIsPageNavigationEnabled())
             {
                 if (Main.keyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Up) && !upKeyPressed)
@@ -134,19 +248,27 @@ namespace ChatImprover
 
             string text = Main.chatText;
             Main.chatText = GetInputText(null, Main.chatText);
-            int num = 470;
-            num = (int)((float)Main.screenWidth * (1f / Main.UIScale)) - 330;
-            if (text != Main.chatText)
+
+            //æ¢è¡Œ
+            bool isCtrlPressed = Main.inputText.IsKeyDown(Keys.LeftControl) || Main.inputText.IsKeyDown(Keys.RightControl);
+
+            if (isCtrlPressed)
             {
-                for (float x = ChatManager.GetStringSize(FontAssets.MouseText.Value, Main.chatText, Vector2.One).X; x > (float)num; x = ChatManager.GetStringSize(FontAssets.MouseText.Value, Main.chatText, Vector2.One).X)
+                if (Main.inputText.IsKeyDown(Keys.Enter) && !Main.oldInputText.IsKeyDown(Keys.Enter))
                 {
-                    int num2 = Math.Max(0, (int)(x - (float)num) / 100);
-                    Main.chatText = Main.chatText.Substring(0, Main.chatText.Length - 1 - num2);
+                    Main.chatText = Main.chatText.Insert(caretPosition, "\n");
+                    caretPosition += 1;
+                    lineCount += 1;
+                    return;
                 }
             }
 
             if (text != Main.chatText)
+            {
                 SoundEngine.PlaySound(SoundID.MenuTick);
+                lineCount = Main.chatText.Split('\n').Length;
+            }
+
 
             if (!Main.inputTextEnter || !Main.chatRelease)
                 return;
@@ -164,12 +286,14 @@ namespace ChatImprover
 
             Main.chatText = "";
             caretPosition = 0;
+            lineCount = 1;
             Main.ClosePlayerChat();
             Main.chatRelease = false;
             SoundEngine.PlaySound(SoundID.MenuClose);
 
         }
 
+        //å‘é€æŒ‡ä»¤
         private bool HandleCommand(string chatText)
         {
             MethodInfo method = typeof(CommandLoader).GetMethod("HandleCommand", BindingFlags.NonPublic | BindingFlags.Static);
@@ -206,64 +330,117 @@ namespace ChatImprover
 
         private string GetInputText(On_Main.orig_GetInputText orig, string oldString, bool allowMultiLine = false)
         {
-            if (!Main.drawingPlayerChat)
+            try
             {
-                return orig(oldString, allowMultiLine);
+
+                if (!Main.drawingPlayerChat)
+                {
+                    return orig(oldString, allowMultiLine);
+                }
+
+                if (Main.dedServ || !Main.hasFocus) return Main.dedServ ? "" : oldString;
+
+                Main.inputTextEnter = false;
+                Main.inputTextEscape = false;
+                string text = oldString ?? "";
+                string text2 = "";
+
+                bool isCtrlPressed = Main.inputText.IsKeyDown(Keys.LeftControl) || Main.inputText.IsKeyDown(Keys.RightControl);
+                bool isAltPressed = Main.inputText.IsKeyDown(Keys.LeftAlt) || Main.inputText.IsKeyDown(Keys.RightAlt);
+
+                if (isCtrlPressed && !isAltPressed)
+                {
+                    if (Main.inputText.IsKeyDown(Keys.Z) && !Main.oldInputText.IsKeyDown(Keys.Z)) text = "";
+                    else if (Main.inputText.IsKeyDown(Keys.X) && !Main.oldInputText.IsKeyDown(Keys.X)) { Platform.Get<IClipboard>().Value = oldString; text = ""; }
+                    else if ((Main.inputText.IsKeyDown(Keys.C) || Main.inputText.IsKeyDown(Keys.Insert)) && !Main.oldInputText.IsKeyDown(Keys.C)) Platform.Get<IClipboard>().Value = oldString;
+                    else if (Main.inputText.IsKeyDown(Keys.V) && !Main.oldInputText.IsKeyDown(Keys.V))
+                    {
+                        text2 = PasteTextIn(true, text2);
+                        int num = 470;
+                        num = (int)(Main.screenWidth * (1f / Main.UIScale)) - 330;
+                        string[] lines = text2.Split('\n'); // æŒ‰è¡Œåˆ†å‰²æ–‡æœ¬
+                        text2 = string.Join("\n", SplitTextArray(lines, num, FontAssets.MouseText.Value));
+
+                    }
+                }
+
+                else if (Main.inputText.PressingShift())
+                {
+                    if (Main.inputText.IsKeyDown(Keys.Delete) && !Main.oldInputText.IsKeyDown(Keys.Delete)) { Platform.Get<IClipboard>().Value = oldString; text = ""; }
+                    if (Main.inputText.IsKeyDown(Keys.Insert) && !Main.oldInputText.IsKeyDown(Keys.Insert)) text2 = PasteTextIn(allowMultiLine, text2);
+                }
+
+
+                //å…‰æ ‡ç§»åŠ¨
+                if (ChatImproverConfig.GetIsCaretMovable())
+                {
+                    HandleCursorMovement(text);
+                }
+
+                for (int i = 0; i < Main.keyCount; i++)
+                {
+                    int num = Main.keyInt[i];
+                    string key = Main.keyString[i];
+                    if (num == 13) Main.inputTextEnter = true;
+                    else if (num == 27) Main.inputTextEscape = true;
+                    else if (num >= 32 && num != 127) text2 += key;
+                }
+
+                Main.keyCount = 0;
+
+                if (text2.Length > 0)
+                {
+                    text = text.Insert(caretPosition, text2);
+                    caretPosition += text2.Length;
+                }
+
+                Main.oldInputText = Main.inputText;
+                Main.inputText = Keyboard.GetState();
+
+                //é€€æ ¼å¤„ç†
+                HandleBackspace(ref text, isCtrlPressed);
+                return text;
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception: " + ex.Message);
+                return "";
+            }
+        }
+        public List<string> SplitTextArray(string[] texts, float maxWidth, DynamicSpriteFont font)
+        {
+            List<string> result = new List<string>();
+
+            foreach (string text in texts)
+            {
+                string textCopy = text;
+                while (!string.IsNullOrEmpty(textCopy))
+                {
+                    int bestSplit = textCopy.Length;
+
+                    // ä»å¤´å¼€å§‹å¯»æ‰¾æœ€é•¿ä¸è¶…è¿‡ maxWidth çš„éƒ¨åˆ†
+                    for (int i = 1; i <= textCopy.Length; i++)
+                    {
+                        string subText = textCopy.Substring(0, i);
+                        float width = ChatManager.GetStringSize(font, subText, Vector2.One).X;
+
+                        if (width > maxWidth)
+                        {
+                            bestSplit = i - 1;
+                            break;
+                        }
+                    }
+
+                    // æ·»åŠ ç¬¦åˆå®½åº¦çš„éƒ¨åˆ†åˆ°ç»“æœ
+                    result.Add(textCopy.Substring(0, bestSplit));
+
+                    // å‰©ä½™éƒ¨åˆ†ç»§ç»­å¾ªç¯
+                    textCopy = textCopy.Substring(bestSplit);
+                }
             }
 
-            if (Main.dedServ || !Main.hasFocus) return Main.dedServ ? "" : oldString;
-
-            Main.inputTextEnter = false;
-            Main.inputTextEscape = false;
-            string text = oldString ?? "";
-            string text2 = "";
-
-            bool isCtrlPressed = Main.inputText.IsKeyDown(Keys.LeftControl) || Main.inputText.IsKeyDown(Keys.RightControl);
-            bool isAltPressed = Main.inputText.IsKeyDown(Keys.LeftAlt) || Main.inputText.IsKeyDown(Keys.RightAlt);
-
-            if (isCtrlPressed && !isAltPressed)
-            {
-                if (Main.inputText.IsKeyDown(Keys.Z) && !Main.oldInputText.IsKeyDown(Keys.Z)) text = "";
-                else if (Main.inputText.IsKeyDown(Keys.X) && !Main.oldInputText.IsKeyDown(Keys.X)) { Platform.Get<IClipboard>().Value = oldString; text = ""; }
-                else if ((Main.inputText.IsKeyDown(Keys.C) || Main.inputText.IsKeyDown(Keys.Insert)) && !Main.oldInputText.IsKeyDown(Keys.C)) Platform.Get<IClipboard>().Value = oldString;
-                else if (Main.inputText.IsKeyDown(Keys.V) && !Main.oldInputText.IsKeyDown(Keys.V)) text2 = PasteTextIn(allowMultiLine, text2);
-            }
-
-            else if (Main.inputText.PressingShift())
-            {
-                if (Main.inputText.IsKeyDown(Keys.Delete) && !Main.oldInputText.IsKeyDown(Keys.Delete)) { Platform.Get<IClipboard>().Value = oldString; text = ""; }
-                if (Main.inputText.IsKeyDown(Keys.Insert) && !Main.oldInputText.IsKeyDown(Keys.Insert)) text2 = PasteTextIn(allowMultiLine, text2);
-            }
-
-
-            if (ChatImproverConfig.GetIsCaretMovable())
-            {
-                HandleCursorMovement(text);
-            }
-
-            for (int i = 0; i < Main.keyCount; i++)
-            {
-                int num = Main.keyInt[i];
-                string key = Main.keyString[i];
-                if (num == 13) Main.inputTextEnter = true;
-                else if (num == 27) Main.inputTextEscape = true;
-                else if (num >= 32 && num != 127) text2 += key;
-            }
-
-            Main.keyCount = 0;
-
-            // Ö»ÓĞÔÚÓĞĞÂÊäÈëÊ±²ÅÖ´ĞĞ²åÈë
-            if (text2.Length > 0)
-            {
-                text = text.Insert(caretPosition, text2);
-                caretPosition += text2.Length;  // ¸üĞÂ¹â±êÎ»ÖÃ
-            }
-
-            Main.oldInputText = Main.inputText;
-            Main.inputText = Keyboard.GetState();
-
-            HandleBackspace(ref text, isCtrlPressed);
-            return text;
+            return result;
         }
 
         private void HandleBackspace(ref string text, bool isCtrlPressed)
@@ -356,7 +533,6 @@ namespace ChatImprover
             var oldPressedKeys = Main.oldInputText.GetPressedKeys();
             bool flag = false;
 
-            // ×ó¼ıÍ·£¨Ïò×óÒÆ¶¯¹â±ê£©
             if (Main.inputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Left) && Main.oldInputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Left))
             {
                 leftArrowRate -= 0.05f;
@@ -377,7 +553,6 @@ namespace ChatImprover
                 leftArrowCount = 15;
             }
 
-            // ÓÒ¼ıÍ·£¨ÏòÓÒÒÆ¶¯¹â±ê£©
             if (Main.inputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Right) && Main.oldInputText.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.Right))
             {
                 rightArrowRate -= 0.05f;
@@ -398,7 +573,6 @@ namespace ChatImprover
                 rightArrowCount = 15;
             }
 
-            // ´¦Àí¹â±êµÄÒÆ¶¯£º¼ì²éÊÇ·ñ°´ÏÂ×ó»òÓÒ¼ıÍ·
             for (int j = 0; j < pressedKeys.Length; j++)
             {
                 bool flag2 = true;
@@ -413,11 +587,11 @@ namespace ChatImprover
                 if (string.Concat(pressedKeys[j]) == "Left" && (flag2 || flag) && caretPosition > 0 && canMoveCursor)
                 {
 
-                    caretPosition = Math.Max(0, caretPosition - 1); // ×óÒÆ¹â±ê
+                    caretPosition = Math.Max(0, caretPosition - 1);
                 }
                 else if (string.Concat(pressedKeys[j]) == "Right" && (flag2 || flag) && caretPosition < text.Length && canMoveCursor)
                 {
-                    caretPosition = Math.Min(text.Length, caretPosition + 1); // ÓÒÒÆ¹â±ê
+                    caretPosition = Math.Min(text.Length, caretPosition + 1);
                 }
             }
         }
@@ -442,40 +616,18 @@ namespace ChatImprover
                     Main.instance.textBlinkerCount = 0;
                 }
 
-                if (Main.screenWidth > 800)
-                {
-                    int num = Main.screenWidth - 300;
-                    int num2 = 78;
-                    Main.spriteBatch.Draw(TextureAssets.TextBack.Value, new Vector2(num2, Main.screenHeight - 36), new Microsoft.Xna.Framework.Rectangle(0, 0, TextureAssets.TextBack.Width() - 100, TextureAssets.TextBack.Height()), new Microsoft.Xna.Framework.Color(100, 100, 100, 100), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
-                    num -= 400;
-                    num2 += 400;
-                    while (num > 0)
-                    {
-                        if (num > 300)
-                        {
-                            Main.spriteBatch.Draw(TextureAssets.TextBack.Value, new Vector2(num2, Main.screenHeight - 36), new Microsoft.Xna.Framework.Rectangle(100, 0, TextureAssets.TextBack.Width() - 200, TextureAssets.TextBack.Height()), new Microsoft.Xna.Framework.Color(100, 100, 100, 100), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
-                            num -= 300;
-                            num2 += 300;
-                        }
-                        else
-                        {
-                            Main.spriteBatch.Draw(TextureAssets.TextBack.Value, new Vector2(num2, Main.screenHeight - 36), new Microsoft.Xna.Framework.Rectangle(TextureAssets.TextBack.Width() - num, 0, TextureAssets.TextBack.Width() - (TextureAssets.TextBack.Width() - num), TextureAssets.TextBack.Height()), new Microsoft.Xna.Framework.Color(100, 100, 100, 100), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
-                            num = 0;
-                        }
-                    }
-                }
-                else
-                {
-                    Main.spriteBatch.Draw(TextureAssets.TextBack.Value, new Vector2(78f, Main.screenHeight - 36), new Microsoft.Xna.Framework.Rectangle(0, 0, TextureAssets.TextBack.Width(), TextureAssets.TextBack.Height()), new Microsoft.Xna.Framework.Color(100, 100, 100, 100), 0f, default(Vector2), 1f, SpriteEffects.None, 0f);
-                }
-
-
+                int width = Main.screenWidth - 300;
+                int height = lineCount * 28;
+                int startX = 78;
+                int startY = Main.screenHeight - 6 - height;//- 36
+                Color panelColor = new Color(100, 100, 100, 100);
+                DrawBackgroundPanel(startX, startY, width, height, TextureAssets.TextBack.Value, panelColor);
 
 
                 int hoveredSnippet = -1;
                 StringBuilder sb = new StringBuilder(Main.chatText);
 
-                // ¹â±êÉÁË¸´¦Àí
+                //å…‰æ ‡é—ªçƒ
                 string insertText = Main.instance.textBlinkerState == 1 ? "|" : " ";
                 if (string.IsNullOrEmpty(sb.ToString()) || !ChatImproverConfig.GetIsCaretMovable())
                 {
@@ -486,31 +638,18 @@ namespace ChatImprover
                     sb.Insert(caretPosition, insertText);
                 }
 
-                // IME ×Ö·û´®´¦Àí
                 string compositionString = Platform.Get<IImeService>().CompositionString;
                 if (compositionString != null && compositionString.Length > 0)
                 {
                     sb.Insert(caretPosition, $"[c/FFF014:{compositionString}]");
                 }
 
+                //å¤„ç†Tag
                 List<TextSnippet> list = ChatManager.ParseMessage(sb.ToString(), Microsoft.Xna.Framework.Color.White);
                 array = list.ToArray();
 
-                /*                // ´´½¨ 1x1 Í¸Ã÷´¿É«ÎÆÀí
-                                Texture2D solidTexture = new Texture2D(Main.graphics.GraphicsDevice, 1, 1);
-                                solidTexture.SetData(new Color[] { Color.White }); // Éè¶¨»ù´¡ÑÕÉ«
-
-
-                                Vector2 stringSize = ChatManager.GetStringSize(FontAssets.MouseText.Value, array, Vector2.Zero);
-
-                                // Ê¹ÓÃ°ëÍ¸Ã÷ºìÉ«»æÖÆÒ»¸ö 200x50 µÄ¾ØĞÎ
-
-
-                                int startX = (int)88f;
-                                int startY = (int)(Main.screenHeight - 30);
-                                Main.spriteBatch.Draw(solidTexture, new Rectangle(startX, startY, startX + (int)stringSize.X, 30), new Color(106, 90, 205, 150));*/
-
-                ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, array, new Vector2(88f, Main.screenHeight - 30), 0f, Vector2.Zero, Vector2.One, out hoveredSnippet);
+                //ç»˜åˆ¶æ¡†å†…æ–‡æœ¬
+                ChatManager.DrawColorCodedStringWithShadow(Main.spriteBatch, FontAssets.MouseText.Value, array, new Vector2(88f, Main.screenHeight - height), 0f, Vector2.Zero, Vector2.One, out hoveredSnippet);//Main.screenHeight - 30
                 if (hoveredSnippet > -1)
                 {
                     array[hoveredSnippet].OnHover();
@@ -519,25 +658,62 @@ namespace ChatImprover
                 }
             }
 
+            //ç»˜åˆ¶èŠå¤©è®°å½•
             Main.chatMonitor.DrawChat(Main.drawingPlayerChat);
             if (Main.drawingPlayerChat && array != null)
             {
                 Vector2 stringSize = ChatManager.GetStringSize(FontAssets.MouseText.Value, array, Vector2.Zero);
                 Main.instance.DrawWindowsIMEPanel(new Vector2(88f, Main.screenHeight - 30) + new Vector2(stringSize.X + 10f, -6f));
             }
-
             TimeLogger.DetailedDrawTime(10);
+        }
+
+        //ä¹å®«æ ¼ç»˜åˆ¶è´´å›¾æ³•
+        void DrawBackgroundPanel(int startX, int startY, int width, int height, Texture2D texture, Color color)
+        {
+            int cornerSize = 10; // è§’è½å›ºå®šå¤§å°
+            int edgeWidth = texture.Width - (cornerSize * 2); // æ¨ªå‘è¾¹ç¼˜å®½åº¦
+            int edgeHeight = texture.Height - (cornerSize * 2); // çºµå‘è¾¹ç¼˜é«˜åº¦
+
+            Main.spriteBatch.Draw(texture, new Vector2(startX, startY),
+    new Rectangle(0, 0, cornerSize, cornerSize),
+    color, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+
+            Main.spriteBatch.Draw(texture, new Rectangle(startX + cornerSize, startY, width - (cornerSize * 2), cornerSize),
+    new Rectangle(cornerSize, 0, edgeWidth, cornerSize),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Vector2(startX + width - cornerSize, startY),
+    new Rectangle(texture.Width - cornerSize, 0, cornerSize, cornerSize),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Rectangle(startX, startY + cornerSize, cornerSize, height - (cornerSize * 2)),
+    new Rectangle(0, cornerSize, cornerSize, edgeHeight),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Rectangle(startX + cornerSize, startY + cornerSize, width - (cornerSize * 2), height - (cornerSize * 2)),
+    new Rectangle(cornerSize, cornerSize, edgeWidth, edgeHeight),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Rectangle(startX + width - cornerSize, startY + cornerSize, cornerSize, height - (cornerSize * 2)),
+    new Rectangle(texture.Width - cornerSize, cornerSize, cornerSize, edgeHeight),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Vector2(startX, startY + height - cornerSize),
+    new Rectangle(0, texture.Height - cornerSize, cornerSize, cornerSize),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Rectangle(startX + cornerSize, startY + height - cornerSize, width - (cornerSize * 2), cornerSize),
+    new Rectangle(cornerSize, texture.Height - cornerSize, edgeWidth, cornerSize),
+    color);
+
+            Main.spriteBatch.Draw(texture, new Vector2(startX + width - cornerSize, startY + height - cornerSize),
+    new Rectangle(texture.Width - cornerSize, texture.Height - cornerSize, cornerSize, cornerSize),
+    color);
         }
 
         public override void Unload()
         {
-            // Ğ¶ÔØÊ±½â³ı×¢²á
-            CustomKey = null;
-        }
-
-        private static bool ShouldOverrideChat()
-        {
-            return true;
         }
 
     }
